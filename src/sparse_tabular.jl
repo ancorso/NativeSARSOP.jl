@@ -18,7 +18,7 @@ function ModifiedSparseTabular(pomdp::POMDP)
     R = _tabular_rewards(pomdp, S, A, terminal)
     O = POMDPTools.ModelTools.observation_matrix_a_sp_o(pomdp)
     b0 = _vectorized_initialstate(pomdp, S)
-    return ModifiedSparseTabular(T,R,O,terminal,b0,discount(pomdp), (a)->discount(pomdp,a))
+    return ModifiedSparseTabular(T,R,O,terminal,b0,discount(pomdp), (a)->discount(pomdp,A[a]))
 end
 
 function transition_matrix_a_sp_s(mdp::Union{MDP, POMDP})
