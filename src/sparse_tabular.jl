@@ -5,6 +5,7 @@ struct ModifiedSparseTabular <: POMDP{Int,Int,Int}
     isterminal::SparseVector{Bool, Int}
     initialstate::SparseVector{Float64, Int}
     discount::Float64
+    discount_fn::Function
 end
 
 function ModifiedSparseTabular(pomdp::POMDP)
@@ -17,7 +18,7 @@ function ModifiedSparseTabular(pomdp::POMDP)
     R = _tabular_rewards(pomdp, S, A, terminal)
     O = POMDPTools.ModelTools.observation_matrix_a_sp_o(pomdp)
     b0 = _vectorized_initialstate(pomdp, S)
-    return ModifiedSparseTabular(T,R,O,terminal,b0,discount(pomdp))
+    return ModifiedSparseTabular(T,R,O,terminal,b0,discount(pomdp), (a)->discount(pomdp,a))
 end
 
 function transition_matrix_a_sp_s(mdp::Union{MDP, POMDP})
@@ -93,6 +94,7 @@ POMDPTools.ordered_observations(pomdp::ModifiedSparseTabular) = axes(first(pomdp
 POMDPs.observations(pomdp::ModifiedSparseTabular) = ordered_observations(pomdp)
 
 POMDPs.discount(pomdp::ModifiedSparseTabular) = pomdp.discount
+POMDPs.discount(pomdp::ModifiedSparseTabular, a) = pomdp.discount_fn(a)
 POMDPs.initialstate(pomdp::ModifiedSparseTabular) = pomdp.initialstate
 POMDPs.isterminal(pomdp::ModifiedSparseTabular, s::Int) = pomdp.isterminal[s]
 
