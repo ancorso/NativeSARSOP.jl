@@ -2,6 +2,7 @@ struct ModifiedSparseTabular <: POMDP{Int,Int,Int}
     T::Vector{SparseMatrixCSC{Float64, Int64}} # T[a][sp, s]
     R::Array{Float64, 2} # R[s,a]
     O::Vector{SparseMatrixCSC{Float64, Int64}} # O[a][sp, o]
+    Δts::Vector{Float64}
     isterminal::SparseVector{Bool, Int}
     initialstate::SparseVector{Float64, Int}
     discount::Float64
@@ -11,6 +12,7 @@ end
 function ModifiedSparseTabular(pomdp::POMDP)
     S = ordered_states(pomdp)
     A = ordered_actions(pomdp)
+    Δts = [:time in fieldnames(typeof(a)) ? a.time : 0 for a in A]
     O = ordered_observations(pomdp)
 
     terminal = _vectorized_terminal(pomdp, S)
@@ -18,7 +20,7 @@ function ModifiedSparseTabular(pomdp::POMDP)
     R = _tabular_rewards(pomdp, S, A, terminal)
     O = POMDPTools.ModelTools.observation_matrix_a_sp_o(pomdp)
     b0 = _vectorized_initialstate(pomdp, S)
-    return ModifiedSparseTabular(T,R,O,terminal,b0,discount(pomdp), (a)->discount(pomdp,A[a]))
+    return ModifiedSparseTabular(T,R,O,Δts,terminal,b0,discount(pomdp), (a)->discount(pomdp,A[a]))
 end
 
 function transition_matrix_a_sp_s(mdp::Union{MDP, POMDP})
@@ -90,6 +92,7 @@ POMDPTools.ordered_states(pomdp::ModifiedSparseTabular) = axes(pomdp.R, 1)
 POMDPs.states(pomdp::ModifiedSparseTabular) = ordered_states(pomdp)
 POMDPTools.ordered_actions(pomdp::ModifiedSparseTabular) = eachindex(pomdp.T)
 POMDPs.actions(pomdp::ModifiedSparseTabular) = ordered_actions(pomdp)
+POMDPs.actionindex(pomdp::ModifiedSparseTabular, a) = a
 POMDPTools.ordered_observations(pomdp::ModifiedSparseTabular) = axes(first(pomdp.O), 2)
 POMDPs.observations(pomdp::ModifiedSparseTabular) = ordered_observations(pomdp)
 

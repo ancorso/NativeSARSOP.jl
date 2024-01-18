@@ -78,6 +78,7 @@ POMDPTools.ordered_actions(tree::SARSOPTree) = actions(tree.pomdp)
 POMDPs.observations(tree::SARSOPTree) = ordered_observations(tree)
 POMDPTools.ordered_observations(tree::SARSOPTree) = observations(tree.pomdp)
 POMDPs.discount(tree::SARSOPTree) = discount(tree.pomdp)
+POMDPs.discount(tree::SARSOPTree, a) = discount(tree.pomdp, a)
 
 function _initialize_belief(pomdp::POMDP, dist::Any=initialstate(pomdp))
     ns = length(states(pomdp))
@@ -169,13 +170,13 @@ end
 Fill p(o|b,a), V̲(τ(bao)), V̄(τ(bao)) ∀ o,a if not already filled
 """
 function fill_populated!(tree::SARSOPTree, b_idx::Int)
-    γ = discount(tree)
     ACT = actions(tree)
     OBS = observations(tree)
     b = tree.b[b_idx]
     Qa_upper = tree.Qa_upper[b_idx]
     Qa_lower = tree.Qa_lower[b_idx]
     for a in ACT
+        γ = discount(tree, a)
         ba_idx = tree.b_children[b_idx][a]
         tree.ba_pruned[ba_idx] && continue
         Rba = belief_reward(tree, b, a)
@@ -200,7 +201,6 @@ end
 
 function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
     pomdp = tree.pomdp
-    γ = discount(tree)
     A = actions(tree)
     O = observations(tree)
     N_OBS = length(O)
@@ -214,6 +214,7 @@ function fill_unpopulated!(tree::SARSOPTree, b_idx::Int)
     b_children = (n_ba+1):(n_ba+N_ACT)
 
     for a in A
+        γ = discount(tree, a)
         ba_idx = add_action!(tree, b_idx, a)
         ba_children = (n_b+1):(n_b+N_OBS)
         tree.ba_children[ba_idx] = ba_children

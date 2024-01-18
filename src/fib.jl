@@ -18,10 +18,10 @@ end
 
 function update!(𝒫::ModifiedSparseTabular, M::FastInformedBound, Γ, 𝒮, 𝒜, 𝒪)
     (;R,T,O) = 𝒫
-    γ = discount(𝒫)
     residuals = M.residuals
 
     for a ∈ 𝒜
+        γ = discount(𝒫, a)
         α_a = M.α_tmp
         T_a = T[a]
         O_a = O[a]

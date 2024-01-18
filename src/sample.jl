@@ -23,6 +23,7 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
         return
     else
         Q̲, Q̄, a′ = max_r_and_q(tree, b_idx)
+        Δt = tree.pomdp.Δts[a′]
         ba_idx = tree.b_children[b_idx][a′] #line 10
         tree.ba_pruned[ba_idx] = false
 
@@ -31,33 +32,43 @@ function sample_points(sol::SARSOPSolver, tree::SARSOPTree, b_idx::Int, L, U, t,
         L′ = max(L, Q̲)
         U′ = max(U, Q̲ + γ^(-t)*ϵ)
 
-        op_idx = best_obs(tree, b_idx, ba_idx, ϵ, t+1)
-        Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx)
+        op_idx = best_obs(tree, b_idx, ba_idx, ϵ, t+Δt)
+        Lt, Ut = get_LtUt(tree, ba_idx, Rba′, L′, U′, op_idx, Δt)
 
         bp_idx = tree.ba_children[ba_idx][op_idx]
         push!(tree.sampled, b_idx)
-        sample_points(sol, tree, bp_idx, Lt, Ut, t+1, ϵ)
+        sample_points(sol, tree, bp_idx, Lt, Ut, t+Δt, ϵ)
     end
 end
 
 belief_reward(tree, b, a) = dot(@view(tree.pomdp.R[:,a]), b)
 
 function max_r_and_q(tree::SARSOPTree, b_idx::Int)
-    Q̲ = -Inf
-    Q̄ = -Inf
-    a′ = 0
-    for (i,ba_idx) in enumerate(tree.b_children[b_idx])
-        Q̄′ = tree.Qa_upper[b_idx][i]
-        Q̲′ = tree.Qa_lower[b_idx][i]
-        if Q̲′ > Q̲
-            Q̲ = Q̲′
-        end
-        if Q̄′ > Q̄
-            Q̄ = Q̄′
-            a′ = i
-        end
-    end
-    return Q̲, Q̄, a′
+    Q̄′s = [tree.Qa_upper[b_idx][i] for i in 1:length(tree.b_children[b_idx])]
+    Q̲′s = [tree.Qa_lower[b_idx][i] for i in 1:length(tree.b_children[b_idx])]
+
+    expQs = exp.(Q̄′s)
+    probs = expQs ./ sum(expQs)
+    a′ = rand(Categorical(probs))
+    return Q̲′s[a′], Q̄′s[a′], a′
+
+    # Q̲ = -Inf
+    # Q̄ = -Inf
+    # a′ = 0
+    # for (i,ba_idx) in enumerate(tree.b_children[b_idx])
+        
+    #     Q̄′ = tree.Qa_upper[b_idx][i]
+    #     Q̲′ = tree.Qa_lower[b_idx][i]
+    #     # println("action $i, upper: $(Q̄′), lower: $(Q̲′)")
+    #     if Q̲′ > Q̲
+    #         Q̲ = Q̲′
+    #     end
+    #     if Q̄′ > Q̄
+    #         Q̄ = Q̄′
+    #         a′ = i
+    #     end
+    # end
+    # return Q̲, Q̄, a′
 end
 
 function best_obs(tree::SARSOPTree, b_idx, ba_idx, ϵ, t)
@@ -82,10 +93,10 @@ end
 
 obs_prob(tree::SARSOPTree, ba_idx::Int, o_idx::Int) = tree.poba[ba_idx][o_idx]
 
-function get_LtUt(tree, ba_idx, Rba, L′, U′, o′)
+function get_LtUt(tree, ba_idx, Rba, L′, U′, o′, Δt)
     γ = discount(tree)
-    Lt = (L′ - Rba)/γ
-    Ut = (U′ - Rba)/γ
+    Lt = (L′ - Rba)/γ^Δt
+    Ut = (U′ - Rba)/γ^Δt
 
     for o in observations(tree)
         if o′ != o
